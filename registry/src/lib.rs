@@ -16,7 +16,6 @@
 //! Upgradeable by the owner (`upgrade`, then `migrate` on the new code), keeping all state.
 
 use near_sdk::json_types::{U128, U64};
-use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::store::{IterableMap, IterableSet, LookupMap};
 use near_sdk::{
     env, log, near, require, AccountId, BorshStorageKey, Gas, GasWeight, NearToken, PanicOnDefault, Promise, PromiseOrValue,
@@ -68,8 +67,7 @@ pub struct Client {
 /// Fee kinds agents pay to the registry.
 const FEE_KINDS: [&str; 2] = ["platform", "swap"];
 
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
 pub struct FeeRevenue {
     /// NEAR fees collected and not yet withdrawn.
     pub near_available: U128,
@@ -94,16 +92,14 @@ pub struct Payment {
     pub block_height: U64,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
 pub struct PaymentView {
     pub index: u32,
     #[serde(flatten)]
     pub payment: Payment,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
 pub struct AgentView {
     pub agent_id: String,
     pub owner: AccountId,
@@ -116,8 +112,7 @@ pub struct AgentView {
     pub active: bool,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
 pub struct Config {
     pub owner: AccountId,
     pub trial_days: u32,

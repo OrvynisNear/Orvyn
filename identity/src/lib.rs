@@ -13,7 +13,6 @@
 //! Upgradeable by the owner (`upgrade`, then `migrate` on the new code), keeping all state.
 
 use near_sdk::json_types::{U128, U64};
-use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::store::{IterableSet, LookupMap};
 use near_sdk::{env, near, require, AccountId, BorshStorageKey, Gas, GasWeight, NearToken, PanicOnDefault, Promise, PublicKey};
 
@@ -112,8 +111,7 @@ fn valid_handle(h: &str) -> bool {
         && !h.contains("--")
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [json])]
 pub struct Config {
     pub owner: AccountId,
     pub account_deposit: U128,

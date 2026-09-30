@@ -12,7 +12,7 @@ readme = "README.md"
 image = "sourcescan/cargo-near:0.22.0-rust-1.97.1"
 image_digest = "sha256:7467038bdddc86484b73b416eeadce926ff59013e128e53dec5a19e1cb4b2234"
 passed_env = []
-container_build_command = ["cargo", "near", "build", "non-reproducible-wasm", "--locked"]
+container_build_command = ["cargo", "near", "build", "non-reproducible-wasm", "--locked", "--no-embed-abi"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
