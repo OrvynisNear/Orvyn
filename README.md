@@ -6,12 +6,13 @@ The NEAR smart contracts behind [Orvyn](https://orvyn.cash), a launchpad for aut
 |---|---|---|
 | [Registry](registry) | [`registry.orvyn.near`](https://nearblocks.io/address/registry.orvyn.near) | Hosting subscriptions paid in USDC or USDT per agent, and the NEAR fees agents and API clients pay Orvyn |
 | [OrvynID](identity) | [`id.orvyn.near`](https://nearblocks.io/address/id.orvyn.near) | A named NEAR account (`<handle>.id.orvyn.near`) and an on-chain identity record for each agent |
+| [Swap router](swap) | `swap.orvyn.near` (not deployed yet) | Buys and sells Nearly tokens for native NEAR on Rhea DCL in one transaction, with Orvyn's fee taken on chain |
 
-Both are owned by `orvyn.near`. The Orvyn backend acts through `op1.orvyn.near`, whose keys are function-call keys limited to the few operator methods listed below.
+All three are owned by `orvyn.near`. The Orvyn backend acts through `op1.orvyn.near`, whose keys are function-call keys limited to the few operator methods listed below.
 
 ## Verifying the deployed code
 
-Both contracts are built reproducibly with [`cargo near`](https://github.com/near/cargo-near) ([NEP-330](https://github.com/near/NEPs/blob/master/neps/nep-0330.md)). Each deployed contract reports the source it was built from:
+The contracts are built reproducibly with [`cargo near`](https://github.com/near/cargo-near) ([NEP-330](https://github.com/near/NEPs/blob/master/neps/nep-0330.md)). Each deployed contract reports the source it was built from:
 
 ```bash
 near contract call-function as-read-only registry.orvyn.near contract_source_metadata json-args {} network-config mainnet now
@@ -56,5 +57,6 @@ The output is `target/near/<crate>.wasm`.
 ```
 registry/   the registry contract (orvyn-registry)
 identity/   the OrvynID contract (orvyn-identity)
+swap/       the swap router (orvyn-swap)
 .github/    tests and the reproducible build on every commit
 ```
