@@ -1,0 +1,60 @@
+name: Test and build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract: [registry, identity]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Unit tests
+        working-directory: ${{ matrix.contract }}
+        run: cargo test --locked
+
+  # The same build SourceScan runs to verify the code on chain: the pinned image in each
+  # Cargo.toml, from the committed source. The artifact's code hash is what NEAR shows.
+  reproducible-build:
+    needs: test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        contract: [registry, identity]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-near
+        run: curl --proto '=https' --tlsv1.2 -LsSf https://github.com/near/cargo-near/releases/download/cargo-near-v0.22.0/cargo-near-installer.sh | sh
+      - name: Build (reproducible)
+        working-directory: ${{ matrix.contract }}
+        run: cargo near build reproducible-wasm
+      - name: Code hash
+        working-directory: ${{ matrix.contract }}
+        run: |
+          wasm=$(ls target/near/*.wasm)
+          python3 - "$wasm" <<'PY' | tee -a "$GITHUB_STEP_SUMMARY"
+          import hashlib, sys
+          data = open(sys.argv[1], "rb").read()
+          digest = hashlib.sha256(data).digest()
+          alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+          n, b58 = int.from_bytes(digest, "big"), ""
+          while n:
+              n, r = divmod(n, 58)
+              b58 = alphabet[r] + b58
+          print(f"**{sys.argv[1]}**: {len(data)} bytes, code hash `{b58}`")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.contract }}-wasm
+          path: ${{ matrix.contract }}/target/near/*
+          if-no-files-found: error
