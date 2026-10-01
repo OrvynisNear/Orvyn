@@ -1,6 +1,6 @@
 # Orvyn swap router
 
-To be deployed at `swap.orvyn.near`. It trades Nearly tokens against **native NEAR** on the token's Rhea DCL pool in a **single transaction**, and takes Orvyn's fee on chain. The router wraps and unwraps NEAR itself: traders only send and receive NEAR.
+Deployed at [`swap.orvyn.near`](https://nearblocks.io/address/swap.orvyn.near) (verified; the account has no access keys, so its code changes only through its owner-gated `upgrade`). It trades Nearly tokens against **native NEAR** on the token's Rhea DCL pool in a **single transaction**, and takes Orvyn's fee on chain. The router wraps and unwraps NEAR itself: traders only send and receive NEAR.
 
 ## Buy
 
