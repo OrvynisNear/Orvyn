@@ -26,6 +26,10 @@ use near_sdk::{env, log, near, require, AccountId, Gas, GasWeight, NearToken, Pa
 const BPS: u128 = 10_000;
 /// Hard cap on the fee the owner can set: 1%.
 const MAX_FEE_BPS: u16 = 100;
+/// Kept above the router's storage cost, so withdrawals never leave it short.
+const STORAGE_MARGIN: u128 = 50_000_000_000_000_000_000_000;
+/// Sells through the router (see ft_on_transfer).
+const SELLS_ENABLED: bool = false;
 /// Smallest trade: 0.001 NEAR in (buys) or out (sells).
 const MIN_TRADE: u128 = 1_000_000_000_000_000_000_000;
 /// Storage registration for a trader on a Nearly token (NEP-145; any excess comes back to the router).
@@ -226,6 +230,13 @@ impl Router {
     /// NEP-141 receiver: a sell. The token is the caller; `msg` = `{"pool_id","min_out"}` with
     /// `min_out` the least NEAR (yocto) to receive before the fee. Returns the tokens not used.
     pub fn ft_on_transfer(&mut self, sender_id: AccountId, amount: U128, msg: String) -> PromiseOrValue<U128> {
+        // Sells are off: Rhea's DCL pays a sell's proceeds out as native NEAR in receipts that land
+        // after this router's callback, so the router can't forward them to the seller. Every
+        // token sent here is returned to its sender untouched until sells are redesigned.
+        if !SELLS_ENABLED {
+            emit("refunded", json!({ "trader": sender_id, "token": env::predecessor_account_id(), "side": "sell", "tokens": amount, "reason": "sells are disabled" }));
+            return PromiseOrValue::Value(amount);
+        }
         let token = env::predecessor_account_id();
         let sell: SellMsg = serde_json::from_str(&msg).unwrap_or_else(|_| env::panic_str(r#"msg must be {"pool_id","min_out"}"#));
         self.assert_open(&token, &sell.pool_id);
@@ -363,6 +374,17 @@ impl Router {
             )
     }
 
+    /// Owner: send NEAR the router holds beyond its own storage (and a small margin) to
+    /// `receiver_id`. All of it when `amount` is omitted. The router's storage is never touched.
+    pub fn withdraw_near(&mut self, receiver_id: AccountId, amount: Option<U128>) -> Promise {
+        self.assert_owner();
+        let free = self.free_balance();
+        let amount = amount.map(|a| a.0).unwrap_or(free);
+        require!(amount > 0 && amount <= free, "more than the router's free balance");
+        emit("withdrawn", json!({ "receiver_id": receiver_id, "amount": U128(amount) }));
+        Promise::new(receiver_id).transfer(NearToken::from_yoctonear(amount))
+    }
+
     pub fn transfer_ownership(&mut self, new_owner: AccountId) {
         self.assert_owner();
         self.owner = new_owner;
@@ -409,7 +431,17 @@ impl Router {
         Stats { buys: U64(self.buys), sells: U64(self.sells), volume_near: U128(self.volume_near), fees_near: U128(self.fees_near) }
     }
 
+    /// NEAR the router holds beyond what its storage needs, less a small margin.
+    pub fn get_free_balance(&self) -> U128 {
+        U128(self.free_balance())
+    }
+
     // ---------- Internal ----------
+
+    fn free_balance(&self) -> u128 {
+        let locked = env::storage_byte_cost().as_yoctonear() * env::storage_usage() as u128 + STORAGE_MARGIN;
+        env::account_balance().as_yoctonear().saturating_sub(locked)
+    }
 
     fn pay_fee(&mut self, fee: u128) {
         if fee == 0 {
@@ -497,6 +529,50 @@ mod tests {
     fn fee_cap() {
         let mut r = router();
         r.set_fee_bps(101);
+    }
+
+    fn with_balance(predecessor: &str, balance: u128, storage: u64) {
+        testing_env!(VMContextBuilder::new()
+            .predecessor_account_id(acc(predecessor))
+            .account_balance(NearToken::from_yoctonear(balance))
+            .storage_usage(storage)
+            .build());
+    }
+
+    #[test]
+    fn free_balance_keeps_storage_and_margin() {
+        let r = router();
+        // 4.7 NEAR held, 183,953 bytes of storage (1.83953 NEAR), 0.05 NEAR margin.
+        with_balance("owner.near", 4_700_000_000_000_000_000_000_000, 183_953);
+        assert_eq!(r.get_free_balance().0, 4_700_000_000_000_000_000_000_000 - 1_839_530_000_000_000_000_000_000 - STORAGE_MARGIN);
+        with_balance("owner.near", 1_000_000_000_000_000_000_000_000, 183_953);
+        assert_eq!(r.get_free_balance().0, 0);
+    }
+
+    #[test]
+    #[should_panic(expected = "more than the router's free balance")]
+    fn withdraw_capped_at_free_balance() {
+        let mut r = router();
+        with_balance("owner.near", 4_700_000_000_000_000_000_000_000, 183_953);
+        let _ = r.withdraw_near(acc("orvyn.near"), Some(U128(4_000_000_000_000_000_000_000_000)));
+    }
+
+    #[test]
+    #[should_panic(expected = "only the owner")]
+    fn withdraw_owner_only() {
+        let mut r = router();
+        with_balance("mallory.near", 4_700_000_000_000_000_000_000_000, 183_953);
+        let _ = r.withdraw_near(acc("mallory.near"), None);
+    }
+
+    #[test]
+    fn sells_are_refunded() {
+        let mut r = router();
+        testing_env!(VMContextBuilder::new().predecessor_account_id(acc("a.nearlytrade.near")).build());
+        match r.ft_on_transfer(acc("seller.near"), U128(500), r#"{"pool_id":"a.nearlytrade.near|wrap.near|10000","min_out":"1"}"#.into()) {
+            PromiseOrValue::Value(v) => assert_eq!(v.0, 500),
+            _ => panic!("a sell must be refunded"),
+        }
     }
 
     #[test]

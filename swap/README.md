@@ -10,7 +10,9 @@ swap.orvyn.near.buy({ token, pool_id, min_out })   attach the NEAR to spend, 300
 
 The router takes the fee, registers the buyer on the token if needed (0.0013 NEAR from the attached amount), wraps the rest and swaps it with the output sent straight to the buyer (DCL's `swap_out_recipient`). `min_out` is the least the pool must pay out, before the token's buy tax. Whatever the swap doesn't use is unwrapped and refunded, with its share of the fee; a swap below `min_out` refunds everything.
 
-## Sell
+## Sell (disabled in v0.2)
+
+Since v0.2 the router returns any token sent to it, untouched, and emits `refunded` with the reason "sells are disabled". In v0.1 one sell's proceeds stayed in the router: Rhea's DCL pays a wNEAR output out as native NEAR, in receipts that land after the router's `on_sold` callback, so the router couldn't forward the NEAR to the seller. Sells will come back with a design that doesn't depend on that timing. How v0.1 sold:
 
 ```
 <token>.ft_transfer_call({ receiver_id: "swap.orvyn.near", amount, msg: "{\"pool_id\":\"…\",\"min_out\":\"…\"}" })   1 yocto, 300 Tgas
@@ -22,19 +24,20 @@ The router reads the token's sell tax (`get_tax`; untaxed tokens have none), ask
 
 - The fee (`fee_bps`, 0.3% at launch, capped at 1% in code) goes to the Orvyn registry in the same transaction: `pay_client_fee` under this router's client id.
 - Only Nearly tokens (`*.nearlytrade.near`) on a pool that pairs them with wNEAR.
-- It holds no trader funds between transactions. A sell that fills above its quote leaves the difference as wNEAR, which the owner can only sweep into the registry as fees.
-- Owner-only: `set_fee_bps`, `set_paused`, `set_client_id`, `sweep`, `transfer_ownership`, `upgrade`.
+- It holds no trader funds between transactions (the one exception was the v0.1 sell bug above).
+- Owner-only: `set_fee_bps`, `set_paused`, `set_client_id`, `sweep`, `withdraw_near`, `transfer_ownership`, `upgrade`. `withdraw_near` can only send NEAR above the router's own storage cost plus a 0.05 NEAR margin, and every withdrawal emits `withdrawn`.
 
 ## Methods
 
 | Method | Who | |
 |---|---|---|
 | `buy(token, pool_id, min_out)` | anyone, with NEAR attached | Buy |
-| `ft_on_transfer(sender_id, amount, msg)` | Nearly tokens (via `ft_transfer_call`) | Sell |
+| `ft_on_transfer(sender_id, amount, msg)` | Nearly tokens (via `ft_transfer_call`) | Sell (disabled in v0.2: returns the tokens) |
+| `withdraw_near(receiver_id, amount?)` | owner | Send NEAR above storage and margin; all of it when `amount` is omitted |
 | `setup()` | owner, with the wNEAR storage deposit | One-time wNEAR registration |
-| `get_config()`, `get_stats()`, `version()` | view | Settings, trade counts, volume and fees |
+| `get_config()`, `get_stats()`, `version()`, `get_free_balance()` | view | Settings, trade counts, volume and fees, NEAR withdrawable |
 
-Events (NEP-297, standard `orvyn_swap`): `bought`, `sold`, `refunded`, `config_changed`, `upgraded`.
+Events (NEP-297, standard `orvyn_swap`): `bought`, `sold`, `refunded`, `withdrawn`, `config_changed`, `upgraded`.
 
 ## Build and test
 
