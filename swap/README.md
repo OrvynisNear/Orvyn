@@ -25,7 +25,7 @@ The router reads the token's sell tax (`get_tax`; untaxed tokens have none), ask
 - The fee (`fee_bps`, 0.3% at launch, capped at 1% in code) goes to the Orvyn registry in the same transaction: `pay_client_fee` under this router's client id.
 - Only Nearly tokens (`*.nearlytrade.near`) on a pool that pairs them with wNEAR.
 - It holds no trader funds between transactions (the one exception was the v0.1 sell bug above).
-- Owner-only: `set_fee_bps`, `set_paused`, `set_client_id`, `sweep`, `withdraw_near`, `transfer_ownership`, `upgrade`. `withdraw_near` can only send NEAR above the router's own storage cost plus a 0.05 NEAR margin, and every withdrawal emits `withdrawn`.
+- Owner-only: `set_fee_bps`, `set_paused`, `set_client_id`, `sweep`, `withdraw_near`, `delete_router`, `transfer_ownership`, `upgrade`. `withdraw_near` can only send NEAR above the router's own storage cost plus a 0.05 NEAR margin, and every withdrawal emits `withdrawn`.
 
 ## Methods
 
@@ -34,10 +34,11 @@ The router reads the token's sell tax (`get_tax`; untaxed tokens have none), ask
 | `buy(token, pool_id, min_out)` | anyone, with NEAR attached | Buy |
 | `ft_on_transfer(sender_id, amount, msg)` | Nearly tokens (via `ft_transfer_call`) | Sell (disabled in v0.2: returns the tokens) |
 | `withdraw_near(receiver_id, amount?)` | owner | Send NEAR above storage and margin; all of it when `amount` is omitted |
+| `delete_router(beneficiary_id)` | owner, while paused | Delete the router account; its whole balance goes to `beneficiary_id` |
 | `setup()` | owner, with the wNEAR storage deposit | One-time wNEAR registration |
 | `get_config()`, `get_stats()`, `version()`, `get_free_balance()` | view | Settings, trade counts, volume and fees, NEAR withdrawable |
 
-Events (NEP-297, standard `orvyn_swap`): `bought`, `sold`, `refunded`, `withdrawn`, `config_changed`, `upgraded`.
+Events (NEP-297, standard `orvyn_swap`): `bought`, `sold`, `refunded`, `withdrawn`, `deleted`, `config_changed`, `upgraded`.
 
 ## Build and test
 

@@ -1,6 +1,6 @@
 [package]
 name = "orvyn-swap"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Orvyn swap router: Nearly tokens against native NEAR on Rhea DCL in one transaction, with the fee taken on chain"
 repository = "https://github.com/OrvynisNear/Orvyn"

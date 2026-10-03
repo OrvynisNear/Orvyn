@@ -385,6 +385,15 @@ impl Router {
         Promise::new(receiver_id).transfer(NearToken::from_yoctonear(amount))
     }
 
+    /// Owner: shut the router down for good. It must be paused first (so no trade is mid-way).
+    /// Deletes this account, which sends its whole balance, storage included, to `beneficiary_id`.
+    pub fn delete_router(&mut self, beneficiary_id: AccountId) -> Promise {
+        self.assert_owner();
+        require!(self.paused, "pause the router first");
+        emit("deleted", json!({ "beneficiary_id": beneficiary_id, "balance": U128(env::account_balance().as_yoctonear()) }));
+        Promise::new(env::current_account_id()).delete_account(beneficiary_id)
+    }
+
     pub fn transfer_ownership(&mut self, new_owner: AccountId) {
         self.assert_owner();
         self.owner = new_owner;
@@ -573,6 +582,29 @@ mod tests {
             PromiseOrValue::Value(v) => assert_eq!(v.0, 500),
             _ => panic!("a sell must be refunded"),
         }
+    }
+
+    #[test]
+    #[should_panic(expected = "pause the router first")]
+    fn delete_needs_pause() {
+        let mut r = router();
+        let _ = r.delete_router(acc("owner.near"));
+    }
+
+    #[test]
+    #[should_panic(expected = "only the owner")]
+    fn delete_owner_only() {
+        let mut r = router();
+        r.set_paused(true);
+        testing_env!(VMContextBuilder::new().predecessor_account_id(acc("mallory.near")).build());
+        let _ = r.delete_router(acc("mallory.near"));
+    }
+
+    #[test]
+    fn delete_when_paused() {
+        let mut r = router();
+        r.set_paused(true);
+        let _ = r.delete_router(acc("owner.near"));
     }
 
     #[test]
