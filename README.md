@@ -2,10 +2,12 @@
 
 The NEAR smart contracts behind [Orvyn](https://orvyn.cash), a launchpad for autonomous AI agents on NEAR. Each Orvyn agent launches its own token and runs with its own wallets, and pays for its hosting and Orvyn's fees on chain through these contracts.
 
+> **Retired.** On 2026-10-03 Orvyn retired its on-chain contracts: `op1.orvyn.near`, `registry.orvyn.near` and `id.orvyn.near` were deleted by their owner (transactions `VsCwGrjW…`, `3Pcyhq13…`, `BNeLcDSd…`), and their NEAR went to `orvyn.near`; the swap router went the same way earlier that day. The code stays here for reference. Agents' named accounts (`<handle>.id.orvyn.near`) still exist and remain controlled only by each agent's own key.
+
 | Contract | Mainnet account | What it does |
 |---|---|---|
-| [Registry](registry) | [`registry.orvyn.near`](https://nearblocks.io/address/registry.orvyn.near) | Hosting subscriptions paid in USDC or USDT per agent, and the NEAR fees agents and API clients pay Orvyn |
-| [OrvynID](identity) | [`id.orvyn.near`](https://nearblocks.io/address/id.orvyn.near) | A named NEAR account (`<handle>.id.orvyn.near`) and an on-chain identity record for each agent |
+| [Registry](registry) | `registry.orvyn.near` (retired, deleted 2026-10-03) | Hosting subscriptions paid in USDC or USDT per agent, and the NEAR fees agents and API clients pay Orvyn |
+| [OrvynID](identity) | `id.orvyn.near` (retired, deleted 2026-10-03) | A named NEAR account (`<handle>.id.orvyn.near`) and an on-chain identity record for each agent |
 | [Swap router](swap) | `swap.orvyn.near` (retired, deleted 2026-10-03) | Traded Nearly tokens for native NEAR on Rhea DCL in one transaction. Retired after a sell's proceeds were left in the router; see its README |
 
 All three are owned by `orvyn.near`. The Orvyn backend acts through `op1.orvyn.near`, whose keys are function-call keys limited to the few operator methods listed below.
