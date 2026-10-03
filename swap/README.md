@@ -10,6 +10,10 @@ swap.orvyn.near.buy({ token, pool_id, min_out })   attach the NEAR to spend, 300
 
 The router takes the fee, registers the buyer on the token if needed (0.0013 NEAR from the attached amount), wraps the rest and swaps it with the output sent straight to the buyer (DCL's `swap_out_recipient`). `min_out` is the least the pool must pay out, before the token's buy tax. Whatever the swap doesn't use is unwrapped and refunded, with its share of the fee; a swap below `min_out` refunds everything.
 
+## Retired
+
+`swap.orvyn.near` was upgraded to v0.3, paused and deleted by its owner on 2026-10-03 (transaction `5AuWaDgD8V1diRR11d3kGp6TZvZorUvcfZnT1CNwgfB7`); its 4.74 NEAR went to `orvyn.near`. The code stays here for reference.
+
 ## Sell (disabled in v0.2)
 
 Since v0.2 the router returns any token sent to it, untouched, and emits `refunded` with the reason "sells are disabled". In v0.1 one sell's proceeds stayed in the router: Rhea's DCL pays a wNEAR output out as native NEAR, in receipts that land after the router's `on_sold` callback, so the router couldn't forward the NEAR to the seller. Sells will come back with a design that doesn't depend on that timing. How v0.1 sold:
